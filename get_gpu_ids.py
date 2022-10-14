@@ -35,8 +35,8 @@ def get_gpu_info():
             'total power': str2float(str_list[6]),
             'used memory': str2float(str_list[8]),
             'total memory': str2float(str_list[10]),
-            'GPU-Util': str2float(str_list[12]),
-            'task num': 0
+            'gpu util': str2float(str_list[12]),
+            'process num': 0
         }
         idx += 4
     
@@ -46,7 +46,7 @@ def get_gpu_info():
     while '+-' != gpu_status_list[idx][:2]:
         str_list = gpu_status_list[idx].split()
         if str_list[1] in gpu_status_dict.keys():
-            gpu_status_dict[str_list[1]]['task num'] += 1
+            gpu_status_dict[str_list[1]]['process num'] += 1
         idx += 1
     return gpu_status_dict
 
@@ -55,7 +55,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='The program that get ids of usable GPUs. ')
     parser.add_argument('-N', '--num', type=int, help="The number of GPUs required. ")
     parser.add_argument('-M', '--memory', type=int, default=None, help="The minimum video memory required per GPU. ")
-    parser.add_argument('-T', '--task', type=int, default=None, help="The maximum number of processes running per GPU. ")
+    parser.add_argument('-P', '--process', type=int, default=None, help="The maximum number of running processes per GPU. ")
     parser.add_argument('-U', '--util', type=int, default=None, help="The maximum utilization rate per GPU. ")
     parser.add_argument('-I', '--id', nargs='*', default=None, help="The list of specified GPU id(s).")
     
@@ -64,29 +64,28 @@ def get_args():
 
 def main():
     args = get_args()
-    assert args.num is not None and args.num>=0, "The number of GPUs required is None/wrong. "
+    assert args.num is not None and args.num>=0, "[ERROR] The number of GPUs required is None/wrong. "
     usable_gpu_list = list()
     gpu_status_dict = get_gpu_info()
     for id in gpu_status_dict.keys():
+        if args.id is not None and id not in args.id:
+            continue
         flag = True
         if args.memory is not None and \
            (gpu_status_dict[id]['used memory'] is None or \
-            gpu_status_dict[id]['used memory'] is None or \
+            gpu_status_dict[id]['total memory'] is None or \
             gpu_status_dict[id]['total memory'] - gpu_status_dict[id]['used memory'] < args.memory):
                 flag = False
 
-        if args.task is not None and \
-           (gpu_status_dict[id]['task num'] is None or \
-            gpu_status_dict[id]['task num'] > args.task):
+        if args.process is not None and \
+           (gpu_status_dict[id]['process num'] is None or \
+            gpu_status_dict[id]['process num'] > args.process):
                 flag = False
         
         if args.util is not None and \
             (gpu_status_dict[id]['gpu util'] is None or \
              gpu_status_dict[id]['gpu util'] > args.util):
                 flag = False
-
-        if args.id is not None and id not in args.id:
-            flag = False
 
         if flag:
             usable_gpu_list.append(id)
